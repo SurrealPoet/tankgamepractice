@@ -100,6 +100,7 @@ class GameState:
         self.bullet_speed = 0.1
         self.bullet_range = 4
         self.bullet_delay = 10
+        self.observers = []
 
     @property
     def world_width(self):
@@ -132,6 +133,18 @@ class GameState:
         if unit is None or unit.status != "alive":
             return None
         return unit
+
+    def add_observer(self, observer):
+        self.observers.append(observer)
+
+    def notify_unit_destroyed(self, unit):
+        for observer in self.observers:
+            observer.unit_destroyed(unit)
+
+
+class GameStateObserver:
+    def unit_destroyed(self, unit):
+        pass
 
 
 ###############################################################################
@@ -241,6 +254,7 @@ class MoveBulletCommand(Command):
         if unit is not None and unit != self.bullet.unit:
             self.bullet.status = "destroyed"
             unit.status = "destroyed"
+            self.state.notify_unit_destroyed(unit)
             return
         # Nothing happens, continue bullet trajectory
         self.bullet.position = new_position
@@ -260,7 +274,7 @@ class DeleteDestroyedCommand(Command):
 ###############################################################################
 
 
-class Layer:
+class Layer(GameStateObserver):
     def __init__(self, cell_size, image_file):
         self.cell_size = cell_size
         self.texture = pygame.image.load(image_file)
@@ -388,6 +402,10 @@ class UserInterface:
         self.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
         pygame.display.set_caption("Practice")
         pygame.display.set_icon(pygame.image.load("assets/icon.png"))
+
+        # All layers listen to game state events
+        for layer in self.layers:
+            self.game_state.add_observer(layer)
 
         # Controls
         self.player_unit = self.game_state.units[0]
