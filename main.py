@@ -133,6 +133,7 @@ class GameState:
             return None
         return unit
 
+
 ###############################################################################
 #                                Commands                                     #
 ###############################################################################
@@ -340,6 +341,27 @@ class BulletLayer(Layer):
                 self.render_tile(surface, bullet.position, bullet.tile, bullet.orientation)
 
 
+class ExplosionLayer(Layer):
+    def __init__(self, ui, image_file):
+        super().__init__(ui, image_file)
+        self.explosions = []
+        self.max_frame_index = 27
+
+    def add(self, position):
+        self.explosions.append({'position': position, 'frame_index': 0})
+
+    def unit_destroyed(self, unit):
+        self.add(unit.position)
+
+    def render(self, surface):
+        for explosion in self.explosions:
+            frame_index = math.floor(explosion['frame_index'])
+            self.render_tile(surface, explosion['position'], Vector2(frame_index, 4))
+            explosion['frame_index'] += 0.5
+        self.explosions = [explosion for explosion in self.explosions
+                           if explosion['frame_index'] < self.max_frame_index]
+
+
 ###############################################################################
 #                             User Interface                                  #
 ###############################################################################
@@ -357,7 +379,8 @@ class UserInterface:
             ArrayLayer(self.cell_size, "assets/ground.png", self.game_state, self.game_state.ground),
             ArrayLayer(self.cell_size, "assets/walls.png", self.game_state, self.game_state.walls),
             UnitsLayer(self.cell_size, "assets/units.png", self.game_state, self.game_state.units),
-            BulletLayer(self.cell_size, "assets/explosions.png", self.game_state, self.game_state.bullets)
+            BulletLayer(self.cell_size, "assets/explosions.png", self.game_state, self.game_state.bullets),
+            ExplosionLayer(self.cell_size, "assets/explosions.png")
         ]
 
         # Window
