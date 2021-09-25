@@ -315,17 +315,22 @@ class Layer(GameStateObserver):
 
 
 class ArrayLayer(Layer):
-    def __init__(self, ui, image_file, game_state, array):
+    def __init__(self, ui, image_file, game_state, array, surface_flags=pygame.SRCALPHA):
         super().__init__(ui, image_file)
         self.game_state = game_state
         self.array = array
+        self.surface = None
+        self.surface_flags = surface_flags
 
     def render(self, surface):
-        for y in range(self.game_state.world_height):
-            for x in range(self.game_state.world_width):
-                tile = self.array[y][x]
-                if tile is not None:
-                    self.render_tile(surface, Vector2(x, y), tile)
+        if self.surface is None:
+            self.surface = pygame.Surface(surface.get_size(), flags=self.surface_flags)
+            for y in range(self.game_state.world_height):
+                for x in range(self.game_state.world_width):
+                    tile = self.array[y][x]
+                    if tile is not None:
+                        self.render_tile(self.surface, Vector2(x, y), tile)
+        surface.blit(self.surface, (0, 0))
 
 
 class UnitsLayer(Layer):
@@ -389,19 +394,21 @@ class UserInterface:
 
         # Rendering properties
         self.cell_size = Vector2(64, 64)
-        self.layers = [
-            ArrayLayer(self.cell_size, "assets/ground.png", self.game_state, self.game_state.ground),
-            ArrayLayer(self.cell_size, "assets/walls.png", self.game_state, self.game_state.walls),
-            UnitsLayer(self.cell_size, "assets/units.png", self.game_state, self.game_state.units),
-            BulletLayer(self.cell_size, "assets/explosions.png", self.game_state, self.game_state.bullets),
-            ExplosionLayer(self.cell_size, "assets/explosions.png")
-        ]
 
         # Window
         window_size = self.game_state.world_size.elementwise() * self.cell_size
         self.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
         pygame.display.set_caption("Practice")
         pygame.display.set_icon(pygame.image.load("assets/icon.png"))
+
+        # Layers
+        self.layers = [
+            ArrayLayer(self.cell_size, "assets/ground.png", self.game_state, self.game_state.ground, 0),
+            ArrayLayer(self.cell_size, "assets/walls.png", self.game_state, self.game_state.walls),
+            UnitsLayer(self.cell_size, "assets/units.png", self.game_state, self.game_state.units),
+            BulletLayer(self.cell_size, "assets/explosions.png", self.game_state, self.game_state.bullets),
+            ExplosionLayer(self.cell_size, "assets/explosions.png")
+        ]
 
         # All layers listen to game state events
         for layer in self.layers:
