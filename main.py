@@ -1,5 +1,6 @@
 import pygame
 from pygame.math import Vector2
+import tmx
 import os
 import math
 
@@ -39,63 +40,9 @@ class GameState:
     def __init__(self):
         self.epoch = 0
         self.world_size = Vector2(16, 10)
-        self.ground = [
-            [Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(7, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2), Vector2(7, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 4),
-             Vector2(7, 2), Vector2(7, 2)],
-            [Vector2(5, 1), Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 1), Vector2(6, 2), Vector2(5, 1),
-             Vector2(6, 1), Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2),
-             Vector2(6, 1), Vector2(5, 1)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 1), Vector2(6, 2), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2),
-             Vector2(5, 1), Vector2(7, 1)],
-            [Vector2(5, 1), Vector2(7, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 5), Vector2(7, 2),
-             Vector2(7, 2), Vector2(7, 2), Vector2(7, 2), Vector2(7, 2), Vector2(7, 2), Vector2(7, 2), Vector2(8, 5),
-             Vector2(5, 1), Vector2(5, 1)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 1), Vector2(6, 2), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2),
-             Vector2(5, 1), Vector2(7, 1)],
-            [Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2), Vector2(5, 1),
-             Vector2(5, 1), Vector2(7, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2),
-             Vector2(7, 1), Vector2(5, 1)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(6, 4), Vector2(7, 2), Vector2(7, 2), Vector2(8, 4), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(6, 2),
-             Vector2(5, 1), Vector2(5, 1)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(6, 2), Vector2(5, 1), Vector2(5, 1), Vector2(7, 1), Vector2(5, 1),
-             Vector2(5, 1), Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(7, 4),
-             Vector2(7, 2), Vector2(7, 2)],
-            [Vector2(5, 1), Vector2(5, 1), Vector2(6, 2), Vector2(6, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1), Vector2(5, 1),
-             Vector2(5, 1), Vector2(5, 1)]
-        ]
-        self.units = [Unit(self, Vector2(1, 9), Vector2(1, 0)),
-                      Unit(self, Vector2(6, 3), Vector2(0, 2)),
-                      Unit(self, Vector2(6, 5), Vector2(0, 2)),
-                      Unit(self, Vector2(13, 3), Vector2(0, 1)),
-                      Unit(self, Vector2(13, 6), Vector2(0, 1))]
-        self.walls = [
-            [None, None, None, None, None, None, None, None, None, Vector2(1, 3), Vector2(1, 1), Vector2(1, 1),
-             Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, None, None, None, None, None],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, None, Vector2(1, 3),
-             Vector2(1, 1), Vector2(0, 3), None],
-            [None, None, None, None, None, None, None, Vector2(1, 1), Vector2(1, 1), Vector2(3, 3), None, None,
-             Vector2(2, 1), None, Vector2(2, 1), None],
-            [None, None, None, None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, Vector2(2, 1),
-             None],
-            [None, None, None, None, None, None, None, Vector2(1, 1), Vector2(1, 1), Vector2(0, 3), None, None,
-             Vector2(2, 1), None, Vector2(2, 1), None],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, None, Vector2(2, 1), None,
-             Vector2(2, 1), None],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, None, Vector2(2, 3),
-             Vector2(1, 1), Vector2(3, 3), None],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 1), None, None, None, None, None, None],
-            [None, None, None, None, None, None, None, None, None, Vector2(2, 3), Vector2(1, 1), Vector2(1, 1),
-             Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
-        ]
+        self.ground = [[Vector2(5, 1)] * 16] * 10
+        self.walls = [[None] * 16] * 10
+        self.units = [Unit(self, Vector2(8, 9), Vector2(1, 0))]
         self.bullets = []
         self.bullet_speed = 0.1
         self.bullet_range = 4
@@ -269,6 +216,152 @@ class DeleteDestroyedCommand(Command):
         self.item_list[:] = new_list
 
 
+class LoadLevelCommand(Command):
+    def __init__(self, ui, file_name):
+        self.ui = ui
+        self.file_name = file_name
+
+    def decode_layer(self, tile_map, layer):
+        """
+        Decode layer and check layer properties
+
+        Returns the corresponding tileset
+        """
+        if not isinstance(layer, tmx.Layer):
+            raise RuntimeError("Error in {}: invalid layer type".format(self.file_name))
+        if len(layer.tiles) is not tile_map.width * tile_map.height:
+            raise RuntimeError("Error in {}: invalid tiles count".format(self.file_name))
+
+        # Guess which tileset is used by this layer
+        gid = None
+        for tile in layer.tiles:
+            if tile.gid != 0:
+                gid = tile.gid
+                break
+        if gid is None:
+            if len(tile_map.tilesets) == 0:
+                raise RuntimeError("Error in {}: no tilesets".format(self.file_name))
+            tileset = tile_map.tilesets[0]
+        else:
+            tileset = None
+            for t in tile_map.tilesets:
+                if t.firstgid <= gid < t.firstgid + t.tilecount:
+                    tileset = t
+                    break
+            if tileset is None:
+                raise RuntimeError("Error in {}: no corresponding tileset".format(self.file_name))
+
+        # Check the tileset
+        if tileset.columns <= 0:
+            raise RuntimeError("Error in {}: invalid columns count".format(self.file_name))
+        if tileset.image.data is not None:
+            raise RuntimeError("Error in {}: embedded tileset image is not supported".format(self.file_name))
+
+        return tileset
+
+    def decode_array_layer(self, tile_map, layer):
+        """
+        Create an array from a tileMap layer
+        """
+        tileset = self.decode_layer(tile_map, layer)
+
+        array = [None] * tile_map.height
+        for y in range(tile_map.height):
+            array[y] = [None] * tile_map.width
+            for x in range(tile_map.width):
+                tile = layer.tiles[x + y * tile_map.width]
+                if tile.gid == 0:
+                    continue
+                lid = tile.gid - tileset.firstgid
+                if lid < 0 or lid >= tileset.tilecount:
+                    raise RuntimeError("Error in {}: invalid tile id".format(self.file_name))
+                tile_x = lid % tileset.columns
+                tile_y = lid // tileset.columns
+                array[y][x] = Vector2(tile_x, tile_y)
+
+        return tileset, array
+
+    def decode_units_layer(self, state, tile_map, layer):
+        """
+        Create a list from a tileMap layer
+        """
+        tileset = self.decode_layer(tile_map, layer)
+
+        units = []
+        for y in range(tile_map.height):
+            for x in range(tile_map.width):
+                tile = layer.tiles[x + y * tile_map.width]
+                if tile.gid == 0:
+                    continue
+                lid = tile.gid - tileset.firstgid
+                if lid < 0 or lid >= tileset.tilecount:
+                    raise RuntimeError("Error in {}: invalid tile id".format(self.file_name))
+                tile_x = lid % tileset.columns
+                tile_y = lid // tileset.columns
+                unit = Unit(state, Vector2(x, y), Vector2(tile_x, tile_y))
+                units.append(unit)
+
+        return tileset, units
+
+    def execute(self):
+        # Load level
+        if not os.path.exists(self.file_name):
+            raise RuntimeError("No file {}".format(self.file_name))
+        tile_map = tmx.TileMap.load(self.file_name)
+
+        # Check main properties
+        if tile_map.orientation != "orthogonal":
+            raise RuntimeError("Error in {}: invalid orientation".format(self.file_name))
+        if len(tile_map.layers) != 5:
+            raise RuntimeError("Error in {}: 5 layers are expected".format(self.file_name))
+
+        # World size
+        state = self.ui.game_state
+        state.world_size = Vector2(tile_map.width, tile_map.height)
+
+        # Ground layer
+        tileset, array = self.decode_array_layer(tile_map, tile_map.layers[0])
+        cell_size = Vector2(tileset.tilewidth, tileset.tileheight)
+        state.ground[:] = array
+        image_file = tileset.image.source
+        self.ui.layers[0].set_tileset(cell_size, image_file)
+
+        # Walls Layer
+        tileset, array = self.decode_array_layer(tile_map, tile_map.layers[1])
+        if tileset.tilewidth != cell_size.x or tileset.tileheight != cell_size.y:
+            raise RuntimeError("Error in {}: tileset sizes must be the same in all layers".format(self.file_name))
+        state.walls[:] = array
+        image_file = tileset.image.source
+        self.ui.layers[1].set_tileset(cell_size, image_file)
+
+        # Units layer
+        tanks_tileset, tanks = self.decode_units_layer(state, tile_map, tile_map.layers[2])
+        towers_tileset, towers = self.decode_units_layer(state, tile_map, tile_map.layers[3])
+        if tanks_tileset != towers_tileset:
+            raise RuntimeError("Error in {}: tanks and towers tilesets must be the same")
+        if tanks_tileset.tilewidth != cell_size.x or tanks_tileset.tileheight != cell_size.y:
+            raise RuntimeError("Error in {}: tile sizes must be the same in all layers".format(self.file_name))
+        state.units[:] = tanks + towers
+        cell_size = Vector2(tanks_tileset.tilewidth, tanks_tileset.tileheight)
+        image_file = tanks_tileset.image.source
+        self.ui.layers[2].set_tileset(cell_size, image_file)
+
+        # Player units
+        self.ui.player_unit = tanks[0]
+
+        # Explosion layer
+        tileset, array = self.decode_array_layer(tile_map, tile_map.layers[4])
+        if tileset.tilewidth != cell_size.x or tileset.tileheight != cell_size.y:
+            raise RuntimeError("Error in {}: tile sizes must be the same in a ll layers".format(self.file_name))
+        state.bullets.clear()
+        image_file = tileset.image.source
+        self.ui.layers[3].set_tileset(cell_size, image_file)
+
+        # Window
+        window_size = state.world_size.elementwise() * cell_size
+        self.ui.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
+
+
 ###############################################################################
 #                                Rendering                                    #
 ###############################################################################
@@ -276,6 +369,10 @@ class DeleteDestroyedCommand(Command):
 
 class Layer(GameStateObserver):
     def __init__(self, cell_size, image_file):
+        self.cell_size = cell_size
+        self.texture = pygame.image.load(image_file)
+
+    def set_tileset(self, cell_size, image_file):
         self.cell_size = cell_size
         self.texture = pygame.image.load(image_file)
 
@@ -321,6 +418,10 @@ class ArrayLayer(Layer):
         self.array = array
         self.surface = None
         self.surface_flags = surface_flags
+
+    def set_tileset(self, cell_size, image_file):
+        super().set_tileset(cell_size, image_file)
+        self.surface = None
 
     def render(self, surface):
         if self.surface is None:
@@ -416,7 +517,7 @@ class UserInterface:
 
         # Controls
         self.player_unit = self.game_state.units[0]
-        self.commands = []
+        self.commands: list[Command] = [LoadLevelCommand(self, "assets/level2.tmx")]
 
         # Loop properties
         self.clock = pygame.time.Clock()
