@@ -229,7 +229,7 @@ class LoadLevelCommand(Command):
         """
         if not isinstance(layer, tmx.Layer):
             raise RuntimeError("Error in {}: invalid layer type".format(self.file_name))
-        if len(layer.tiles) is not tile_map.width * tile_map.height:
+        if len(layer.tiles) != tile_map.width * tile_map.height:
             raise RuntimeError("Error in {}: invalid tiles count".format(self.file_name))
 
         # Guess which tileset is used by this layer
@@ -567,7 +567,7 @@ class UserInterface:
 
         # Other units always target the player's unit and shoot if close enough
         for unit in self.game_state.units:
-            if unit is not self.player_unit:
+            if unit != self.player_unit:
                 self.commands.append(TargetCommand(self.game_state, unit, self.player_unit.position))
                 distance = unit.position.distance_to(self.player_unit.position)
                 if distance <= self.game_state.bullet_range:
