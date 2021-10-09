@@ -46,7 +46,7 @@ class GameState:
         self.bullets = []
         self.bullet_speed = 0.1
         self.bullet_range = 4
-        self.bullet_delay = 10
+        self.bullet_delay = 5
         self.observers = []
 
     @property
@@ -217,8 +217,8 @@ class DeleteDestroyedCommand(Command):
 
 
 class LoadLevelCommand(Command):
-    def __init__(self, ui, file_name):
-        self.ui = ui
+    def __init__(self, game_mode, file_name):
+        self.game_mode = game_mode
         self.file_name = file_name
 
     def decode_layer(self, tile_map, layer):
@@ -316,7 +316,7 @@ class LoadLevelCommand(Command):
             raise RuntimeError("Error in {}: 5 layers are expected".format(self.file_name))
 
         # World size
-        state = self.ui.game_state
+        state = self.game_mode.game_state
         state.world_size = Vector2(tile_map.width, tile_map.height)
 
         # Ground layer
@@ -324,7 +324,7 @@ class LoadLevelCommand(Command):
         cell_size = Vector2(tileset.tilewidth, tileset.tileheight)
         state.ground[:] = array
         image_file = tileset.image.source
-        self.ui.layers[0].set_tileset(cell_size, image_file)
+        self.game_mode.layers[0].set_tileset(cell_size, image_file)
 
         # Walls Layer
         tileset, array = self.decode_array_layer(tile_map, tile_map.layers[1])
@@ -332,7 +332,7 @@ class LoadLevelCommand(Command):
             raise RuntimeError("Error in {}: tileset sizes must be the same in all layers".format(self.file_name))
         state.walls[:] = array
         image_file = tileset.image.source
-        self.ui.layers[1].set_tileset(cell_size, image_file)
+        self.game_mode.layers[1].set_tileset(cell_size, image_file)
 
         # Units layer
         tanks_tileset, tanks = self.decode_units_layer(state, tile_map, tile_map.layers[2])
@@ -344,10 +344,10 @@ class LoadLevelCommand(Command):
         state.units[:] = tanks + towers
         cell_size = Vector2(tanks_tileset.tilewidth, tanks_tileset.tileheight)
         image_file = tanks_tileset.image.source
-        self.ui.layers[2].set_tileset(cell_size, image_file)
+        self.game_mode.layers[2].set_tileset(cell_size, image_file)
 
         # Player units
-        self.ui.player_unit = tanks[0]
+        self.game_mode.player_unit = tanks[0]
 
         # Explosion layer
         tileset, array = self.decode_array_layer(tile_map, tile_map.layers[4])
@@ -355,11 +355,14 @@ class LoadLevelCommand(Command):
             raise RuntimeError("Error in {}: tile sizes must be the same in a ll layers".format(self.file_name))
         state.bullets.clear()
         image_file = tileset.image.source
-        self.ui.layers[3].set_tileset(cell_size, image_file)
+        self.game_mode.layers[3].set_tileset(cell_size, image_file)
 
         # Window
         window_size = state.world_size.elementwise() * cell_size
-        self.ui.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
+        self.game_mode.ui.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
+
+        # Resume game
+        self.game_mode.game_over = False
 
 
 ###############################################################################
@@ -483,24 +486,145 @@ class ExplosionLayer(Layer):
 
 
 ###############################################################################
-#                             User Interface                                  #
+#                                Game Modes                                   #
 ###############################################################################
 
 
-class UserInterface:
-    def __init__(self):
-        pygame.init()
+class GameMode:
+    def process_input(self):
+        raise NotImplementedError()
 
+    def update(self):
+        raise NotImplementedError()
+
+    def render(self, window):
+        raise NotImplementedError()
+
+
+class MessageGameMode(GameMode):
+    def __init__(self, ui, message):
+        self.ui = ui
+        self.font = pygame.font.Font("assets/BD_Cartoon_Shout.ttf", 36)
+        self.message = message
+
+    def process_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.ui.quit_game()
+                break
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE \
+                        or event.key == pygame.K_SPACE \
+                        or event.key == pygame.K_RETURN:
+                    self.ui.show_menu()
+
+    def update(self):
+        pass
+
+    def render(self, window):
+        surface = self.font.render(self.message, True, (200, 0, 0))
+        x = (window.get_width() - surface.get_width()) // 2
+        y = (window.get_height() - surface.get_height()) // 2
+        window.blit(surface, (x, y))
+
+
+class MenuGameMode(GameMode):
+    def __init__(self, ui):
+        self.ui = ui
+
+        # Font
+        self.title_font = pygame.font.Font("assets/BD_Cartoon_Shout.ttf", 72)
+        self.item_font = pygame.font.Font("assets/BD_Cartoon_Shout.ttf", 48)
+
+        # Menu items
+        self.menu_items = [
+            {
+                'title': 'Level 1',
+                'action': lambda: self.ui.load_level("asset/level1.tmx")
+            },
+            {
+                'title': 'Level 2',
+                'action': lambda: self.ui.load_level("asset/level2.tmx")
+            },
+            {
+                'title': 'Level 3',
+                'action': lambda: self.ui.load_level("asset/level3.tmx")
+            },
+            {
+                'title': 'Quit',
+                'action': lambda: self.ui.quit_game()
+            }
+        ]
+
+        # Compute menu width
+        self.menu_width = 0
+        for item in self.menu_items:
+            surface = self.item_font.render(item['title'], True, (200, 0, 0))
+            self.menu_width = max(self.menu_width, surface.get_width())
+            item['surface'] = surface
+
+        self.current_menu_item = 0
+        self.menu_cursor = pygame.image.load("assets/cursor.png")
+
+    def process_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.ui.quit_game()
+                break
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.ui.show_game()
+                elif event.key == pygame.K_DOWN:
+                    if self.current_menu_item < len(self.menu_items) - 1:
+                        self.current_menu_item += 1
+                elif event.key == pygame.K_UP:
+                    if self.current_menu_item > 0:
+                        self.current_menu_item -= 1
+                elif event.key == pygame.K_RETURN:
+                    menu_item = self.menu_items[self.current_menu_item]
+                    try:
+                        menu_item['action']()
+                    except Exception as ex:
+                        print(ex)
+
+    def update(self):
+        pass
+
+    def render(self, window):
+        # Initial y
+        y = 50
+
+        # Title
+        surface = self.title_font.render("TANK BATTLEGROUNDS !!", True, (200, 0, 0))
+        x = (window.get_width() - surface.get_width()) // 2
+        window.blit(surface, (x, y))
+        y += (200 * surface.get_height()) // 100
+
+        # Draw menu items
+        x = (window.get_width() - self.menu_width) // 2
+        for index, item in enumerate(self.menu_items):
+            # Item text
+            surface = item['surface']
+            window.blit(surface, (x, y))
+
+            # Cursor
+            if index == self.current_menu_item:
+                cursor_x = x - self.menu_cursor.get_width() - 10
+                cursor_y = y + (surface.get_height() - self.menu_cursor.get_height()) // 2
+                window.blit(self.menu_cursor, (cursor_x, cursor_y))
+
+            y += (120 * surface.get_height()) // 100
+
+
+class PlayGameMode(GameMode):
+    def __init__(self, ui):
+        self.ui = ui
+
+        # Game state
         self.game_state = GameState()
 
         # Rendering properties
         self.cell_size = Vector2(64, 64)
-
-        # Window
-        window_size = self.game_state.world_size.elementwise() * self.cell_size
-        self.window = pygame.display.set_mode((int(window_size.x), int(window_size.y)))
-        pygame.display.set_caption("Practice")
-        pygame.display.set_icon(pygame.image.load("assets/icon.png"))
 
         # Layers
         self.layers = [
@@ -517,11 +641,8 @@ class UserInterface:
 
         # Controls
         self.player_unit = self.game_state.units[0]
-        self.commands: list[Command] = [LoadLevelCommand(self, "assets/level2.tmx")]
-
-        # Loop properties
-        self.clock = pygame.time.Clock()
-        self.running = True
+        self.game_over = False
+        self.commands = []
 
     @property
     def cell_width(self):
@@ -537,11 +658,11 @@ class UserInterface:
         mouse_clicked = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self.ui.quit_game()
                 break
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.ui.show_menu()
                     break
                 if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                     move_vector.x = 1
@@ -554,6 +675,10 @@ class UserInterface:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_clicked = True
 
+        # If the game is over, all commands creations are disabled
+        if self.game_over:
+            return
+
         # Keyboard controls the moves of the player's unit
         if move_vector.x != 0 or move_vector.y != 0:
             self.commands.append(MoveCommand(self.game_state, self.player_unit, move_vector))
@@ -565,6 +690,10 @@ class UserInterface:
         target_cell.y = mouse_position[1] / self.cell_width - 0.5
         self.commands.append(TargetCommand(self.game_state, self.player_unit, target_cell))
 
+        # Shoot if left mouse was clicked
+        if mouse_clicked:
+            self.commands.append(ShootCommand(self.game_state, self.player_unit))
+
         # Other units always target the player's unit and shoot if close enough
         for unit in self.game_state.units:
             if unit != self.player_unit:
@@ -572,10 +701,6 @@ class UserInterface:
                 distance = unit.position.distance_to(self.player_unit.position)
                 if distance <= self.game_state.bullet_range:
                     self.commands.append(ShootCommand(self.game_state, unit))
-
-        # Shoot if left mouse was clicked
-        if mouse_clicked:
-            self.commands.append(ShootCommand(self.game_state, self.player_unit))
 
         # Bullets automatic movement
         for bullet in self.game_state.bullets:
@@ -590,19 +715,104 @@ class UserInterface:
         self.commands.clear()
         self.game_state.epoch += 1
 
-    def render(self):
-        self.window.fill((0, 0, 0))
+        # Check game over
+        if self.player_unit.status != "alive":
+            self.game_over = True
+            self.ui.show_message("GAME OVER")
+        else:
+            one_enemy_still_lives = False
+            for unit in self.game_state.units:
+                if unit == self.player_unit:
+                    continue
+                if unit.status == "alive":
+                    one_enemy_still_lives = True
+                    break
+            if not one_enemy_still_lives:
+                self.game_over = True
+                self.ui.show_message("Victory !")
 
+    def render(self, window):
         for layer in self.layers:
-            layer.render(self.window)
+            layer.render(window)
 
-        pygame.display.update()
+
+###############################################################################
+#                             User Interface                                  #
+###############################################################################
+
+
+class UserInterface:
+    def __init__(self):
+        # Window
+        pygame.init()
+        self.window = pygame.display.set_mode((1280, 720))
+        pygame.display.set_caption("Practice")
+        pygame.display.set_icon(pygame.image.load("assets/icon.png"))
+
+        # Modes
+        self.play_game_mode = None
+        self.overlay_game_mode = MenuGameMode(self)
+        self.current_active_mode = 'Overlay'
+
+        # Loop properties
+        self.clock = pygame.time.Clock()
+        self.running = True
+
+    def load_level(self, file_name):
+        if self.play_game_mode is None:
+            self.play_game_mode = PlayGameMode(self)
+        self.play_game_mode.commands.append(LoadLevelCommand(self.play_game_mode, file_name))
+        try:
+            self.play_game_mode.update()
+            self.current_active_mode = 'Play'
+        except Exception as ex:
+            print(ex)
+            self.play_game_mode = None
+            self.show_message("Level loading failed :-(")
+
+    def show_game(self):
+        if self.play_game_mode is not None:
+            self.current_active_mode = 'Play'
+
+    def show_menu(self):
+        self.overlay_game_mode = MenuGameMode(self)
+        self.current_active_mode = 'Overlay'
+
+    def show_message(self, message):
+        self.overlay_game_mode = MessageGameMode(self, message)
+        self.current_active_mode = 'Overlay'
+
+    def quit_game(self):
+        self.running = False
 
     def run(self):
         while self.running:
-            self.process_input()
-            self.update()
-            self.render()
+            # Inputs and updates are exclusives
+            if self.current_active_mode == 'Overlay':
+                self.overlay_game_mode.process_input()
+                self.overlay_game_mode.update()
+            elif self.play_game_mode is not None:
+                self.play_game_mode.process_input()
+                try:
+                    self.play_game_mode.update()
+                except Exception as ex:
+                    print(ex)
+                    self.play_game_mode = None
+                    self.show_message("Error during the game update...")
+
+            # Render game (if any), and then the overlay (if active)
+            if self.play_game_mode is not None:
+                self.play_game_mode.render(self.window)
+            else:
+                self.window.fill((0, 0, 0))
+            if self.current_active_mode == 'Overlay':
+                dark_surface = pygame.Surface(self.window.get_size(), flags=pygame.SRCALPHA)
+                pygame.draw.rect(dark_surface, (0, 0, 0, 150), dark_surface.get_rect())
+                self.window.blit(dark_surface, (0, 0))
+                self.overlay_game_mode.render(self.window)
+
+            # Update display
+            pygame.display.update()
             self.clock.tick(60)
 
 
